@@ -17,9 +17,14 @@ const TicketSchema = new Schema({
   cliente: {
     nombre: String,
     apellido: String,
+    dni: Number,
     contacto: {
       email: String,
       telefonos: [String]
+    },
+    localidad: {
+      codigoPostal: Number,
+      descripcion: String
     },
     ubicacion: {
       geolocalizacion: GeoSchema,
@@ -29,6 +34,7 @@ const TicketSchema = new Schema({
     },
     plan: {
       nombre: String,
+      cantCanales:Number,
       canales: [String]
     },
     esEmpleado: Boolean
@@ -61,8 +67,7 @@ const TicketSchema = new Schema({
                 descripcion: String,
                 exito: Boolean
               }
-            ],
-            ticketCerrado: Boolean
+            ]
           }
         ]
       }

@@ -10,3 +10,15 @@ exports.crearCliente = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+//GET - TRAER TODOS LOS CLIENTES
+exports.traerClientes = async (req, res) => {
+  try {
+    const clientes = await Cliente.find();
+    return res.status(200).json(clientes);
+  } catch (error) {
+    return res.status(500).json({
+      msg: error.message,
+    });
+  }
+};

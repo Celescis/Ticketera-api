@@ -51,7 +51,7 @@ exports.traerTicketsGt = async (req, res) => {
 //GET - ($gte) Traer tickets con fecha mayor o igual a agosto 2023
 exports.traerTicketsGte = async (req, res) => {
   try {
-    const fechaLimite = new Date("2023-08-01");
+    const fechaLimite = new Date("2023-04-01");
     const ticketsGte = await Ticket.find({ "infoTicket.fecha": { $gte: fechaLimite } });
     res.status(200).json(ticketsGte);
   } catch (error) {
@@ -60,7 +60,7 @@ exports.traerTicketsGte = async (req, res) => {
 };
 
 //GET - ($lt) Traer tickets creados hasta las 16 hs
-exports.traerTicketsLt= async (req, res) => {
+exports.traerTicketsLt = async (req, res) => {
   try {
     const horaLimite = "16:00";
     const ticketsHastaHora = await Ticket.find({
@@ -73,21 +73,21 @@ exports.traerTicketsLt= async (req, res) => {
 };
 
 //GET - ($lte) Traer tickets creados entre las 7 am y 11 am
-exports.traerTicketsLte= async (req, res) => {
-    try {
-      const horaInicio = "07:00";
-      const horaFin = "11:00";
-      const ticketsEnHorario = await Ticket.find({
-        "infoTicket.hora": { 
-          $gte: horaInicio,
-          $lt: horaFin
-        }
-      });
-      res.status(200).json(ticketsEnHorario);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
-  };
+exports.traerTicketsLte = async (req, res) => {
+  try {
+    const horaInicio = "07:00";
+    const horaFin = "11:00";
+    const ticketsEnHorario = await Ticket.find({
+      "infoTicket.hora": {
+        $gte: horaInicio,
+        $lt: horaFin
+      }
+    });
+    res.status(200).json(ticketsEnHorario);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 //GET - ($ne) Traer tickets en estado NO cerrados
 //rta: 6
@@ -278,19 +278,22 @@ exports.traerTicketsGeoIntersects = async (req, res) => {
 };
 
 //BUSQUEDA TEXTO - $text, $search
-//GET - ($text y $search) Traer 
+//GET - ($text y $search) Traer los clientes con la palabra "interrupcion" en su comentario
 exports.traerTicketsText = async (req, res) => {
   try {
-    const textoBuscado = "Plan Premium";
-    const ticketsPorTexto = await Ticket.find({
-      $text: { $search: textoBuscado }
-    });
-    res.status(200).json(ticketsPorTexto);
+    const resultado = await Ticket.aggregate([
+      { $match: { $text: { $search: "interrupción" } } },
+      { $project: { cliente: 1, comentarioCliente: 1, infoTicket: 1 } }
+    ]);
+    res.status(200).json(resultado);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+
+
+//AGREGATION
 //GET - ($exists) Traer tickets que tienen comentario de cliente 
 exports.traerTicketsExists = async (req, res) => {
   try {
@@ -298,18 +301,6 @@ exports.traerTicketsExists = async (req, res) => {
       "comentarioCliente": { $exists: true, $ne: "" }
     });
     res.status(200).json(ticketsConComentarios);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-//GET - ($type) Traer tickets que tienen comentario de cliente 
-exports.traerTicketsType = async (req, res) => {
-  try {
-    const ticketsConTelefonoArray = await Ticket.find({
-      "cliente.contacto.telefonos": { $type: "array" } // Encuentra tickets donde el campo teléfonos es un arreglo
-    });
-    res.status(200).json(ticketsConTelefonoArray);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -331,12 +322,12 @@ exports.traerTicketsAll = async (req, res) => {
 //GET - ($elemMatch) Traer tickets con solucion exitosa
 exports.traerTicketsElemMatch = async (req, res) => {
   try {
-    const ticketsConSolucion = await Ticket.find({
-      "derivacion.historialDerivaciones": { 
-        $elemMatch: { "exito": true}
+    const ticketsConDerivacionExitosa = await Ticket.find({
+      "derivacion.historialDerivaciones": {
+        $elemMatch: { "responsables.soluciones.exito": true }
       }
     });
-    res.status(200).json(ticketsConSolucion);
+    res.status(200).json(ticketsConDerivacionExitosa);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -355,17 +346,27 @@ exports.traerTicketsSize = async (req, res) => {
   }
 };
 
-
-
-
-//AGREGGATION - $sortByCount, $unwind, $group, $project, $expr
-//GET - ($sortByCount y $group) 
-exports.clientesConMasTickets = async (req, res) => {
+//GET - ($unwind, $match, $group, $project) Qué desperfecto ocurre, dónde, cada cuánto, etc.
+exports.traerClientesDesperfectos = async (req, res) => {
   try {
     const resultado = await Ticket.aggregate([
-      { $group: { _id: "$cliente.nombre", totalTickets: { $sum: 1 } } },
-      { $sort: { totalTickets: -1 } },
-      { $project: { cliente: "$_id", totalTickets: 1, _id: 0 } }  
+      { $unwind: "$infoTicket" },
+      { $match: { "infoTicket.motivo": { $exists: true } } },
+      {
+        $group: {
+          _id: "$infoTicket.motivo",
+          ubicaciones: { $addToSet: "$cliente.ubicacion.geolocalizacion.coordinates" },
+          frecuencia: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          motivo: "$_id",
+          ubicaciones: 1,
+          frecuencia: 1,
+          _id: 0
+        }
+      }
     ]);
     res.status(200).json(resultado);
   } catch (error) {
@@ -373,13 +374,28 @@ exports.clientesConMasTickets = async (req, res) => {
   }
 };
 
-
-//GET - ($unwind ) 
+//GET - ($unwind y $group) Traer los responsables de tickets y la cantidad de tickets atendidos
 exports.informesUnwindGroup = async (req, res) => {
   try {
     const informe = await Ticket.aggregate([
       { $unwind: "$infoTicket" },
-      { $group: { _id: "$infoTicket.motivo", total: { $sum: 1 } } }
+      {
+        $group: {
+          _id: {
+            nombre: "$infoTicket.responsableTicket.nombre",
+            apellido: "$infoTicket.responsableTicket.apellido"
+          },
+          totalTickets: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          responsable: { $concat: ["$_id.nombre", " ", "$_id.apellido"] },
+          totalTickets: 1,
+          _id: 0
+        }
+      },
+      { $sort: { totalTickets: -1 } }
     ]);
     res.status(200).json(informe);
   } catch (error) {
@@ -387,31 +403,48 @@ exports.informesUnwindGroup = async (req, res) => {
   }
 };
 
-
-//GET - ($project y $expr) 
-exports.informesProjectExpr = async (req, res) => {
+//GET - ($lookup, $match y $project) Traer los clientes que son empleados y generaron ticket
+exports.traerTicketsEmpleados = async (req, res) => {
   try {
     const informe = await Ticket.aggregate([
       {
-        $project: {
-          cliente: 1,
-          esEmpleado: "$cliente.esEmpleado",
-          totalDerivaciones: { $size: "$derivacion.historialDerivaciones" },
-          totalSolucionesExitosas: {
-            $size: {
-              $filter: {
-                input: "$derivacion.historialDerivaciones",
-                as: "derivacion",
-                cond: { $eq: ["$$derivacion.exito", true] }
-              }
-            }
-          }
+        $lookup: {
+          from: "clientes",
+          localField: "cliente.dni",
+          foreignField: "dni",
+          as: "clienteInfo"
         }
       },
-      { $match: { $expr: { $gt: ["$totalSolucionesExitosas", 3] } } }
+      {
+        $unwind: {
+          path: "$clienteInfo"
+        }
+      },
+      {
+        $match: {
+          "clienteInfo.esEmpleado": true
+        }
+      },
+      {
+        $project: {
+          "nombreCliente": "$clienteInfo.nombre",
+          "apellidoCliente": "$clienteInfo.apellido",
+          "dniCliente": "$clienteInfo.dni",
+          "emailCliente": "$clienteInfo.contacto.email",
+          "telefonosCliente": "$clienteInfo.contacto.telefonos",
+          "ubicacionCliente": "$clienteInfo.ubicacion",
+        }
+      }
     ]);
     res.status(200).json(informe);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
+
+
+

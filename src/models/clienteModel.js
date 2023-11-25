@@ -13,12 +13,16 @@ const GeoSchema = new Schema({
 });
 
 const ClienteSchema = new Schema({
-  cliente: {
     nombre: String,
     apellido: String,
+    dni: Number,
     contacto: {
       email: String,
       telefonos: [String]
+    },
+    localidad: {
+      codigoPostal: Number,
+      descripcion: String
     },
     ubicacion: {
       geolocalizacion: GeoSchema,
@@ -28,10 +32,10 @@ const ClienteSchema = new Schema({
     },
     plan: {
       nombre: String,
+      cantCanales:Number,
       canales: [String]
     },
     esEmpleado: Boolean
-  }
 }, { timestamps: true });
 
 const Cliente = mongoose.model('Cliente', ClienteSchema);
