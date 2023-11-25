@@ -4,6 +4,7 @@ const ticketController = require('../controllers/ticketController');
 
 router.post('/', ticketController.crearTicket);
 router.get('/', ticketController.traerTickets);
+
 //OPERADORES
 router.get('/eq', ticketController.traerTicketsEq);
 router.get('/ne', ticketController.traerTicketsNe);
