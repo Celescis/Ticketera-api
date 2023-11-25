@@ -1,12 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const ticketRoutes = require('./src/routes/ticketRoutes');
-
+require("dotenv").config();
 const connect = require('./connectMongo');
 connect();
 
 const app = express();
-require("dotenv").config();
+
 
 app.use(express.json());
 app.use(cors());
