@@ -15,10 +15,12 @@ exports.crearTicket = async (req, res) => {
 //GET - TRAER TODOS LOS TICKETS
 exports.traerTickets = async (req, res) => {
   try {
-    const tickets = await Ticket.find({});
-    res.status(200).json(tickets);
+    const tickets = await Ticket.find();
+    return res.status(200).json(tickets);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return res.status(500).json({
+      msg: error.message,
+    });
   }
 };
 
